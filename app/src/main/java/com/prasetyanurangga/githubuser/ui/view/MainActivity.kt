@@ -7,12 +7,18 @@ import android.app.SearchManager
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.widget.SearchView
+import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.*
@@ -23,6 +29,7 @@ import com.prasetyanurangga.githubuser.data.model.UserModel
 import com.prasetyanurangga.githubuser.databinding.ActivityMainBinding
 import com.prasetyanurangga.githubuser.ui.adapter.UserAdapter
 import com.prasetyanurangga.githubuser.ui.viewmodel.UserViewModel
+import com.prasetyanurangga.githubuser.util.Status
 import kotlinx.android.synthetic.main.activity_main.*
 import javax.inject.Inject
 
@@ -37,63 +44,67 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var userViewModelFactory: UserViewModelFactory
 
-    private var visibleThreshold: Int = 10
+    private var visibleThreshold: Int = 20
     private var currentPage: Int = 0
     private var isLoading: Boolean = false
     private var lastVisibleItem: Int = 0
     private var totalItemCount:Int = 0
-    private lateinit var mLayoutManager: RecyclerView.LayoutManager
-
+    private var visibleItemCount:Int = 0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         progressDialog = ProgressDialog(this@MainActivity)
+        progressDialog.setCancelable(false)
         progressDialog.setMessage("Please Wait ...")
-
-        mLayoutManager = LinearLayoutManager(this)
-
         injectDagger()
         createViewModel()
         setBinding()
 
 
-        recycler_view_books.layoutManager = mLayoutManager
+        rv_user.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
 
 
+                if(dy > 0)
+                {
 
-
-
-
-        recycler_view_books.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                super.onScrollStateChanged(recyclerView, newState)
-
-                totalItemCount = userAdapter?.itemCount ?: 0
-
-                lastVisibleItem = (recyclerView.layoutManager as LinearLayoutManager).findLastVisibleItemPosition()
-
-                if (lastVisibleItem == totalItemCount - 1) {
-                    currentPage += visibleThreshold
-                    loadMore("angga",currentPage, visibleThreshold)
+                    if (!recyclerView.canScrollVertically(RecyclerView.FOCUS_DOWN)) {
+                        currentPage += visibleThreshold;
+                        loadMore("a", currentPage, visibleThreshold)
+                    }
                 }
             }
         })
 
-
-    }
-
-    private fun getLastVisibleItem(lastVisibleItemPositions: IntArray): Int {
-        var maxSize = 0
-        for (i in lastVisibleItemPositions.indices) {
-            if (i == 0) {
-                maxSize = lastVisibleItemPositions[i]
-            } else if (lastVisibleItemPositions[i] > maxSize) {
-                maxSize = lastVisibleItemPositions[i]
+        ed_search.setOnEditorActionListener(TextView.OnEditorActionListener { textView, actionId, keyEvent ->
+            if(actionId == EditorInfo.IME_ACTION_SEARCH){
+                onUpdateList(textView.text.toString() ?: "")
+                true
+            } else {
+                false
             }
-        }
-        return maxSize
-    }
+        })
 
+        ed_search.addTextChangedListener(object:TextWatcher{
+            override fun afterTextChanged(p0: Editable?) {
+            }
+
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+            }
+
+            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+                if(p0.isNullOrEmpty())
+                {
+                    userAdapter?.updateUser(null)
+                    userAdapter?.notifyDataSetChanged()
+                }
+            }
+
+        })
+
+
+    }
 
     fun Context.hideKeyboard() {
         val view = this@MainActivity.currentFocus
@@ -101,33 +112,6 @@ class MainActivity : AppCompatActivity() {
         inputMethodManager.hideSoftInputFromWindow(view?.windowToken, 0)
     }
 
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.menu, menu)
-
-        val searchItem: MenuItem? = menu?.findItem(R.id.action_search)
-        val searchManager = getSystemService(Context.SEARCH_SERVICE) as SearchManager
-        val searchView: SearchView? = searchItem?.actionView as SearchView
-
-        searchView?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {// do your logic here                Toast.makeText(applicationContext, query, Toast.LENGTH_SHORT).show()
-                onUpdateList(query ?: "")
-                return true
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                if(newText == "")
-                {
-                    userAdapter?.updateUser(null)
-                    userAdapter?.notifyDataSetChanged()
-                }
-                return true
-            }
-        })
-
-        searchView?.setSearchableInfo(searchManager.getSearchableInfo(componentName))
-        return super.onCreateOptionsMenu(menu)
-    }
 
     private fun createViewModel()
     {
@@ -141,26 +125,34 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadMore(q: String, page: Int, perPage: Int)
     {
-        progressDialog.show()
             userViewModel.getUser(q, page, perPage).observe(this, Observer {
-                list ->
+                resource ->
             if (!isDestroyed)
             {
-                Log.e("eee", list.toString())
-                progressDialog.hide()
-                hideKeyboard()
-                showList(list)
+                when (resource.status) {
+                    Status.SUCCESS -> {
+                        hideKeyboard()
+                        resource.data?.let { list ->
+                            addList(list)
+                        }
+                    }
+                    Status.ERROR -> {
+                        Toast.makeText(this, resource.message, Toast.LENGTH_LONG).show()
+                    }
+                }
+
             }
-        })
+        }
+            )
     }
 
     private fun showList(userList: List<UserModel>?)
     {
         if(userAdapter == null && userList != null)
         {
-            recycler_view_books.layoutManager = LinearLayoutManager(this, RecyclerView.VERTICAL, false)
+            rv_user.layoutManager = LinearLayoutManager(this, RecyclerView.VERTICAL, false)
             userAdapter = UserAdapter(userList)
-            recycler_view_books.adapter = userAdapter
+            rv_user.adapter = userAdapter
         }
         else
         {
@@ -207,16 +199,26 @@ class MainActivity : AppCompatActivity() {
 
     fun onUpdateList(q: String)
     {
-
+        currentPage = 0;
         progressDialog.show()
         userViewModel.getUser(q, currentPage, visibleThreshold).observe(this, Observer {
-                list ->
+                resource ->
             if (!isDestroyed && q.isNotEmpty())
             {
-                Log.e("eee", list.toString())
                 progressDialog.hide()
-                hideKeyboard()
-                showList(list)
+                when (resource.status) {
+                    Status.SUCCESS -> {
+                        hideKeyboard()
+                        resource.data?.let { list ->
+                            showList(list)
+                        }
+                    }
+                    Status.ERROR -> {
+                        Toast.makeText(this, resource.message, Toast.LENGTH_LONG).show()
+                    }
+                }
+
+
             }
             else
             {

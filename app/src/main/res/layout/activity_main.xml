@@ -19,21 +19,54 @@
 
     </data>
 
-    <ScrollView
+    <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
-        <androidx.appcompat.widget.LinearLayoutCompat
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            >
+        <androidx.appcompat.widget.Toolbar
+                android:id="@+id/toolbar"
                 android:layout_width="match_parent"
-                android:orientation="vertical"
-                android:layout_height="match_parent">
+                android:layout_height="?android:attr/actionBarSize"
+                android:background="@color/colorPrimary"
+                android:elevation="3dp"
+                app:contentInsetEnd="0dp"
+                app:contentInsetLeft="0dp"
+                app:contentInsetRight="0dp"
+                app:contentInsetStart="0dp"
+                app:contentInsetStartWithNavigation="0dp"
+                >
 
-
-            <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recycler_view_books"
+            <EditText
+                    android:id="@+id/ed_search"
+                    android:background="#fff"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    tools:listitem="@layout/list_item_user" />
+                    android:layout_height="wrap_content"
+                    android:layout_margin="8dp"
+                    android:drawableLeft="@drawable/ic_search"
+                    android:drawablePadding="5dp"
+                    android:hint="Search Github User"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:padding="8dp" />
 
-        </androidx.appcompat.widget.LinearLayoutCompat>
-    </ScrollView>
+        </androidx.appcompat.widget.Toolbar>
+        <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+            <androidx.appcompat.widget.LinearLayoutCompat
+                    android:layout_width="match_parent"
+                    android:orientation="vertical"
+                    android:layout_height="match_parent">
+
+
+                <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rv_user"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        tools:listitem="@layout/list_item_user" />
+
+            </androidx.appcompat.widget.LinearLayoutCompat>
+        </ScrollView>
+    </LinearLayout>
 </layout>

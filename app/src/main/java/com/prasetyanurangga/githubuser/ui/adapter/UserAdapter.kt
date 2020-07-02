@@ -1,5 +1,6 @@
 package com.prasetyanurangga.githubuser.ui.adapter
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
@@ -22,6 +23,7 @@ class UserAdapter(private var userList: List<UserModel>?): RecyclerView.Adapter<
     fun addUser(newUser: List<UserModel>?)
     {
         userList = merge(userList, newUser)
+        Log.e("semua", userList.toString())
     }
 
     fun <UserModel> merge(first: List<UserModel>?, second: List<UserModel>?): List<UserModel> {
